@@ -1,16 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include <arm_neon.h>
 
 //#define NUMBER_OF_INPUTS 4
-//#define SIZE 16
+//#define SIZE 1600
 #define SIZE 1000000
+#define FILE_NAME "input.txt"
 
 long neon_iteration;
 
 float32_t mul(float *source,float *weight);
+void create_input(int size);
 
 static long diff_in_us(struct timespec t1, struct timespec t2){
     struct timespec diff;
@@ -30,13 +33,17 @@ int main(int argc, char *argv[]){
     struct timespec start,end;
     float source[SIZE] ;
     float weight[SIZE] ;
+    char source_char[10];
+    char weight_char[10];
     FILE *fptr;
-    srand(time(NULL));
+    create_input(SIZE);
+    fptr = fopen(FILE_NAME,"r");
     for(int i = 0;i<SIZE;i++){
     //    source[i] = ((float32_t)rand() /(float32_t)(RAND_MAX) ) * 100.0;
     //    weight[i] = ((float32_t)rand() /(float32_t)(RAND_MAX) ) * 100.0;
-        source[i] = (float32_t)(rand()%100)+1;
-        weight[i] = (float32_t)(rand()%100)+1;
+        fscanf(fptr,"%s %s %f %f\n",source_char,weight_char,&source[i],&weight[i]);
+    //    source[i] = (float32_t)(rand()%100)+1;
+    //    weight[i] = (float32_t)(rand()%100)+1;
     }
     clock_gettime(CLOCK_REALTIME,&start);
     printf("output:  %f\n",mul(source,weight));
@@ -50,16 +57,20 @@ float32_t mul(float *source,float *weights){
     float32_t result[4];
     float32_t output = 0.0;
     int i;
+    prod = vmovq_n_f32(0.0f);
     for (i=0; i<SIZE; i+=4)
     {
         in1_128 = vld1q_f32(&source[i]);
         in2_128 = vld1q_f32(&weights[i]);
-        prod = vmulq_f32(in1_128, in2_128);
 #ifdef FLUSH
+        prod = vmulq_f32(in1_128, in2_128);
         sum1 = vaddq_f32(prod, vrev64q_f32(prod));
         sum2 = vaddq_f32(sum1, vcombine_f32(vget_high_f32(sum1), vget_low_f32(sum1)));
         vst1q_f32((float32_t *)result , sum2);
         output += result[0];
+#endif
+#ifdef NON_FLUSH
+        prod = vmlaq_f32(prod, in1_128, in2_128);
 #endif
     }
     //printf("loop times: %d\n",i);
@@ -73,4 +84,19 @@ float32_t mul(float *source,float *weights){
     return output;
 }
 
+void create_input(int size){
+    FILE *fptr;
+    if( access( FILE_NAME, F_OK ) != -1 ) {
+        return;
+    } 
+    
+    fptr = fopen(FILE_NAME,"w");
+    srand(time(NULL));
+    for(int i = 0;i<size;i++){
+    //    source[i] = ((float32_t)rand() /(float32_t)(RAND_MAX) ) * 100.0;
+    //    weight[i] = ((float32_t)rand() /(float32_t)(RAND_MAX) ) * 100.0;
+        fprintf(fptr,"source weight %f %f\n",(float32_t)(rand()%4)+1,(float32_t)(rand()%4)+1);
+    }
+    fclose(fptr);
+}
 

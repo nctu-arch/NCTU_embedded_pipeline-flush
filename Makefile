@@ -1,5 +1,5 @@
 ARM_CC ?= arm-linux-gnueabihf-gcc
-ARM_CFLAGS = -g -Wall -Wextra -Ofast -mfpu=neon
+ARM_CFLAGS = -g -Wall -Wextra -O0 -mfpu=neon
 EXEC = pipeline pipeline_flush
 
 all:$(EXEC)
