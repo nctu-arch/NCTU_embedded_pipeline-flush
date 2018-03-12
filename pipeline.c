@@ -45,7 +45,6 @@ int main(int argc, char *argv[])
     printf("output:  %f\n",mul(source,weight));
     clock_gettime(CLOCK_REALTIME,&end);
     printf("spend:  %ld us\n",diff_in_us(start,end));
-    fclose(fptr);
     return 0;
 }
 
